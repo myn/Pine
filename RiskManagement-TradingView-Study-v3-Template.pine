@@ -1,0 +1,139 @@
+//@version=3
+study("StudyNameHere [Study] - DRR", overlay=true)
+
+//################### Strategy Begin  #############################
+
+
+
+//################### Strategy End  #############################
+
+
+
+//################### Conditions Begin #############################
+longCond = na
+shortCond = na
+longCond := longSignal
+shortCond := shortSignal
+
+//################### Conditions End #############################
+
+
+
+// Count your long short conditions for more control with Pyramiding
+
+sectionLongs = 0
+sectionLongs := nz(sectionLongs[1])
+sectionShorts = 0
+sectionShorts := nz(sectionShorts[1])
+
+if longCond
+    sectionLongs := sectionLongs + 1
+    sectionShorts := 0
+
+if shortCond
+    sectionLongs := 0
+    sectionShorts := sectionShorts + 1
+    
+// Pyramiding Inputs
+
+pyramidingDivider = input(false,"######################################################")
+pyrl = input(1, "Pyramiding", type = integer)
+
+// These check to see your signal and cross references it against the pyramiding settings above
+
+longCondition = longCond and sectionLongs <= pyrl 
+shortCondition = shortCond and sectionShorts <= pyrl 
+
+// Get the price of the last opened long or short
+
+last_open_longCondition = na
+last_open_shortCondition = na
+last_open_longCondition := longCondition ? high[1] : nz(last_open_longCondition[1])
+last_open_shortCondition := shortCondition ? low[1] : nz(last_open_shortCondition[1])
+
+// Check if your last postion was a long or a short
+
+last_longCondition = na
+last_shortCondition = na
+last_longCondition := longCondition ? time : nz(last_longCondition[1])
+last_shortCondition := shortCondition ? time : nz(last_shortCondition[1])
+
+in_longCondition = last_longCondition > last_shortCondition
+in_shortCondition = last_shortCondition > last_longCondition
+
+// Take profit
+
+isTPl = input(false, "Take Profit Long")
+isTPs = input(false, "Take Profit Short")
+tpl = input(15, "Take Profit Long %", type=float, step=0.10)
+tps = input(30, "Take Profit Short %", type=float, step=0.10)
+long_tp = isTPl and crossover(high, (1+(tpl/100))*last_open_longCondition) and in_longCondition  == 1
+short_tp = isTPs and crossunder(low, (1-(tps/100))*last_open_shortCondition) and in_shortCondition == 1 
+
+// Stop Loss
+stopLossDivider = input(false,"######################################################")
+isSLl = input(false, "Stop Loss Long")
+isSLs = input(false, "Stop Loss Short")
+sll = 0.0
+sll := input(3, "Stop Loss Long %", type=float, step=0.10)
+sls = 0.0
+sls := input(3, "Stop Loss Short %", type=float, step=0.10)
+long_sl = isSLl and crossunder(low, (1-(sll/100))*last_open_longCondition) and longCondition == 0 and in_longCondition == 1
+short_sl = isSLs and crossover(high, (1+(sls/100))*last_open_shortCondition) and shortCondition == 0 and in_shortCondition == 1
+
+
+// Create a single close for all the different closing conditions.
+
+long_close = long_tp or long_sl ? 1 : 0
+short_close = short_tp or short_sl ? 1 : 0
+
+// Get the time of the last close
+
+last_long_close = na
+last_short_close = na
+last_long_close := long_close ? time : nz(last_long_close[1])
+last_short_close := short_close ? time : nz(last_short_close[1])
+
+// Alerts & Signals
+
+bton(b) => b ? 1 : 0
+
+plotshape(longCondition, title = "Buy Signal", style=shape.triangleup, location=location.belowbar, color = lime, transp = 0, size=size.small)
+plotshape(shortCondition, title = "Sell Signal", style=shape.triangledown, location=location.abovebar, color = red, transp = 0, size=size.small)
+
+plotshape(long_tp and last_longCondition > nz(last_long_close[1]), text ="TP", title="Take Profit Long", style=shape.triangledown, 
+   location=location.abovebar, color = red, editable = false, transp = 0, size=size.small) 
+plotshape(short_tp and last_shortCondition > nz(last_short_close[1]) , text ="TP", title="Take Profit Short", style=shape.triangleup, 
+   location=location.belowbar, color = lime, editable = false, transp = 0, size=size.small) 
+
+ltp = iff(long_tp and last_longCondition > nz(last_long_close[1]), (1+(tpl/100))*last_open_longCondition, na)
+plot(ltp, style=cross, linewidth=3, color = white, editable = false)
+stp = iff(short_tp and last_shortCondition > nz(last_short_close[1]), (1-(tps/100))*last_open_shortCondition, na)
+plot(stp, style = cross, linewidth=3, color = white, editable = false)
+
+plotshape(long_sl and last_longCondition > nz(last_long_close[1]), text ="SL", title="Stop Loss Long", style=shape.triangledown, 
+   location=location.abovebar, color = red, editable = false, transp = 0, size=size.small) 
+plotshape(short_sl and last_shortCondition > nz(last_short_close[1]), text ="SL", title="Stop Loss Short", style=shape.triangleup, 
+   location=location.belowbar, color = lime, editable = false, transp = 0), size=size.small 
+
+lsl = iff(long_sl and last_longCondition > nz(last_long_close[1]), (1-(sll/100))*last_open_longCondition, na)
+plot(lsl, style=cross, linewidth=3, color = white, editable = false)
+ssl = iff(short_sl and last_shortCondition > nz(last_short_close[1]), (1+(sls/100))*last_open_shortCondition, na)
+plot(ssl, style = cross, linewidth=3, color = white, editable = false)
+plotshape(longCondition[1]==1, title= "Long Alert Completed", location=location.bottom, color=green, transp=0, style=shape.circle, size=size.small, offset=-1)
+plotshape(shortCondition[1]==1, title= "Short Alert Completed", location=location.top, color=red, transp=0, style=shape.circle, size=size.small, offset=-1)
+
+
+alertcondition(bton(longCondition), title="*Buy Alert*", 
+   message = "a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=order t=open delay=1 | a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=position b=short t=market delay=2 | a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd b=long p=-0.50 l=1 q=90%") 
+
+alertcondition(bton(shortCondition or (long_tp and high > close and last_longCondition > nz(last_long_close[1]))), title="*Sell Alert*", 
+   message = "a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=order t=open delay=1 | a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=position b=long t=market delay=2 | a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd b=short p=0.50 l=1 q=90%") 
+
+alertcondition(bton((long_tp and high > close and last_longCondition > nz(last_long_close[1])) or 
+   (long_sl and last_longCondition > nz(last_long_close[1]))), title="*TP/SL Sell Alert*", 
+   message = "a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=order t=open delay=1 | a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=position b=long t=market delay=2")
+   
+alertcondition(bton((short_tp and low < close and last_shortCondition > nz(last_short_close[1])) or 
+   (short_sl and last_shortCondition > nz(last_short_close[1]))), title="*TP/SL Buy Alert*",
+   message = "a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=order t=open delay=1 | a=MYNCRYPTOBMT e=bitmex-testnet s=xbtusd c=position b=short t=market delay=2")
