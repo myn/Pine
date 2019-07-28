@@ -1,0 +1,124 @@
+//@version=3
+strategy("StrategyNameHere [Strategy] - DRR", precision=6, overlay=true, pyramiding=0, initial_capital=20000, currency="USD", default_qty_type=strategy.percent_of_equity, default_qty_value=100.0, commission_value=0.075)
+
+//################### Strategy Begin  #############################
+
+
+//################### Strategy End  #############################
+
+
+
+//################### Conditions Begin #############################
+
+longCond = na
+shortCond = na
+longCond := longSignal
+shortCond := shortSignal
+
+
+longCondClose = false
+shortCondClose = false
+
+//################### Conditions End #############################
+
+// BackTest date range
+testBackTestDateDivider = input(false,"######################################################")
+testStartYear = input(2018, "Backtest Start Year") 
+testStartMonth = input(1, "Backtest Start Month")
+testStartDay = input(1, "Backtest Start Day")
+testPeriodStart = timestamp(testStartYear,testStartMonth,testStartDay,0,0)
+testStopYear = input(999999, "Backtest Stop Year")
+testStopMonth = input(1, "Backtest Stop Month")
+testStopDay = input(1, "Backtest Stop Day")
+testPeriodStop = timestamp(testStopYear,testStopMonth,testStopDay,0,0)
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop ? true : false
+
+
+// Count your long short conditions for more control with Pyramiding
+
+sectionLongs = 0
+sectionLongs := nz(sectionLongs[1])
+sectionShorts = 0
+sectionShorts := nz(sectionShorts[1])
+
+if longCond
+    sectionLongs := sectionLongs + 1
+    sectionShorts := 0
+
+if shortCond
+    sectionLongs := 0
+    sectionShorts := sectionShorts + 1
+    
+// Pyramiding Inputs
+pyramidingDivider = input(false,"######################################################")
+pyrl = input(1, "Pyramiding", type = integer)
+
+// These check to see your signal and cross references it against the pyramiding settings above
+
+longCondition = longCond and sectionLongs <= pyrl 
+shortCondition = shortCond and sectionShorts <= pyrl 
+
+// Get the price of the last opened long or short
+
+last_open_longCondition = na
+last_open_shortCondition = na
+last_open_longCondition := longCondition ? high[1] : nz(last_open_longCondition[1])
+last_open_shortCondition := shortCondition ? low[1] : nz(last_open_shortCondition[1])
+
+// Check if your last postion was a long or a short
+
+last_longCondition = na
+last_shortCondition = na
+last_longCondition := longCondition ? time : nz(last_longCondition[1])
+last_shortCondition := shortCondition ? time : nz(last_shortCondition[1])
+
+in_longCondition = last_longCondition > last_shortCondition
+in_shortCondition = last_shortCondition > last_longCondition
+
+// Take profit
+isTPl = input(false, "Take Profit Long")
+isTPs = input(false, "Take Profit Short")
+tpl = input(15, "Take Profit Long %", type=float, step=0.10)
+tps = input(30, "Take Profit Short %", type=float, step=0.10)
+long_tp = isTPl and crossover(high, (1+(tpl/100))*last_open_longCondition) and in_longCondition  == 1
+short_tp = isTPs and crossunder(low, (1-(tps/100))*last_open_shortCondition) and in_shortCondition == 1 
+
+// Stop Loss
+stopLossDivider = input(false,"######################################################")
+isSLl = input(false, "Stop Loss Long")
+isSLs = input(false, "Stop Loss Short")
+sll = 0.0
+sll := input(3, "Stop Loss Long %", type=float, step=0.10)
+sls = 0.0
+sls := input(3, "Stop Loss Short %", type=float, step=0.10)
+long_sl = isSLl and crossunder(low, (1-(sll/100))*last_open_longCondition) and longCondition == 0 and in_longCondition == 1
+short_sl = isSLs and crossover(high, (1+(sls/100))*last_open_shortCondition) and shortCondition == 0 and in_shortCondition == 1
+
+
+// Conditional Closes
+conditionalClosesDivider = input(false,"######################################################")
+isCLl = input(false, "Close Condition Long")
+isCLs = input(false, "Close Condition Short")
+long_cl = isCLl and longCondClose and in_longCondition  == 1
+short_cl = isCLs and shortCondClose and in_shortCondition == 1 
+
+
+// Create a single close for all the different closing conditions.
+
+long_close = long_tp or long_sl or long_cl ? 1 : 0
+short_close = short_tp or short_sl or short_cl ? 1 : 0
+
+// Get the time of the last close
+
+last_long_close = na
+last_short_close = na
+last_long_close := long_close ? time : nz(last_long_close[1])
+last_short_close := short_close ? time : nz(last_short_close[1])
+
+// Strategy entries
+if testPeriod()
+    strategy.entry("long", strategy.long, when=longCondition == true)
+    strategy.entry("short", strategy.short, when=shortCondition == true)
+    strategy.close("long", when = long_sl or long_close)
+    strategy.close("short", when = short_sl or short_close)
