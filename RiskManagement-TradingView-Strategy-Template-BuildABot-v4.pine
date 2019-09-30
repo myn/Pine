@@ -1,0 +1,305 @@
+//@version=4
+strategy("StrategyNameHere [Strategy] - BuildABot-DRR", precision=6, overlay=true, pyramiding=0, initial_capital=20000, currency="USD", default_qty_type=strategy.percent_of_equity, default_qty_value=100.0, commission_value=0.075)
+// study("StrategyNameHere [Study] - BuildABot-DRR", overlay=true)
+
+
+/////////////////////////////////////
+//* Put your strategy logic below *//
+/////////////////////////////////////
+
+
+
+//////////////////////////////////////
+//* Put your strategy rules below *//
+/////////////////////////////////////
+
+longLogic = false
+shortLogic = false
+
+longCondClose = false
+shortCondClose = false
+
+///////////////////////////////////////////////
+//* Backtesting Period Selector | Component *//
+///////////////////////////////////////////////
+
+//* https://www.tradingview.com/script/eCC1cvxQ-Backtesting-Period-Selector-Component *//
+//* https://www.tradingview.com/u/pbergden/ *//
+//* Modifications made *//
+timePeriodDivider = input(false,"░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+testStartYear = input(2019, "Backtest Start Year") 
+testStartMonth = input(1, "Backtest Start Month")
+testStartDay = input(1, "Backtest Start Day")
+testPeriodStart = timestamp(testStartYear,testStartMonth,testStartDay,0,0)
+
+testStopYear = input(77777777, "Backtest Stop Year")
+testStopMonth = input(12, "Backtest Stop Month")
+testStopDay = input(31, "Backtest Stop Day")
+testPeriodStop = timestamp(testStopYear,testStopMonth,testStopDay,0,0)
+
+testPeriod() =>
+    time >= testPeriodStart and time <= testPeriodStop ? true : false
+
+
+//////////////////////////
+//* Strategy Component *//
+//////////////////////////
+longShortFlipDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+isLong = input(false, "Longs Only")
+isShort = input(false, "Shorts Only")
+isFlip = input(false, "Flip the Opens")
+
+long = longLogic
+short = shortLogic
+
+if isFlip
+    long := shortLogic
+    short := longLogic
+    short
+else
+    long := longLogic
+    short := shortLogic
+    short
+
+if isLong
+    long := long
+    short := na
+    short
+
+if isShort
+    long := na
+    short := short
+    short
+
+////////////////////////////////
+//======[ Signal Count ]======//
+////////////////////////////////
+
+sectionLongs = 0
+sectionLongs := nz(sectionLongs[1])
+sectionShorts = 0
+sectionShorts := nz(sectionShorts[1])
+
+if long
+    sectionLongs := sectionLongs + 1
+    sectionShorts := 0
+    sectionShorts
+
+if short
+    sectionLongs := 0
+    sectionShorts := sectionShorts + 1
+    sectionShorts
+
+//////////////////////////////
+//======[ Pyramiding ]======//
+//////////////////////////////
+pyramidingDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+pyrl = input(1, "Pyramiding less than")  // If your count is less than this number
+pyre = input(0, "Pyramiding equal to")  // If your count is equal to this number
+pyrg = input(1000000, "Pyramiding greater than")  // If your count is greater than this number
+
+longCondition = long and sectionLongs <= pyrl or long and sectionLongs >= pyrg or 
+   long and sectionLongs == pyre ? 1 : 0
+shortCondition = short and sectionShorts <= pyrl or short and sectionShorts >= pyrg or 
+   short and sectionShorts == pyre ? 1 : 0
+
+////////////////////////////////
+//======[ Entry Prices ]======//
+////////////////////////////////
+
+last_open_longCondition = float(na)
+last_open_shortCondition = float(na)
+last_open_longCondition := longCondition ? close : nz(last_open_longCondition[1])
+last_open_shortCondition := shortCondition ? close : nz(last_open_shortCondition[1])
+
+////////////////////////////////////
+//======[ Open Order Count ]======//
+////////////////////////////////////
+
+sectionLongConditions = 0
+sectionLongConditions := nz(sectionLongConditions[1])
+sectionShortConditions = 0
+sectionShortConditions := nz(sectionShortConditions[1])
+
+if longCondition
+    sectionLongConditions := sectionLongConditions + 1
+    sectionShortConditions := 0
+    sectionShortConditions
+
+if shortCondition
+    sectionLongConditions := 0
+    sectionShortConditions := sectionShortConditions + 1
+    sectionShortConditions
+
+///////////////////////////////////////////////
+//======[ Position Check (long/short) ]======//
+///////////////////////////////////////////////
+
+last_longCondition = float(na)
+last_shortCondition = float(na)
+last_longCondition := longCondition ? time : nz(last_longCondition[1])
+last_shortCondition := shortCondition ? time : nz(last_shortCondition[1])
+
+in_longCondition = last_longCondition > last_shortCondition
+in_shortCondition = last_shortCondition > last_longCondition
+
+/////////////////////////////////////
+//======[ Position Averages ]======//
+/////////////////////////////////////
+
+totalLongs = 0.0
+totalLongs := nz(totalLongs[1])
+totalShorts = 0.0
+totalShorts := nz(totalShorts[1])
+averageLongs = 0.0
+averageLongs := nz(averageLongs[1])
+averageShorts = 0.0
+averageShorts := nz(averageShorts[1])
+
+if longCondition
+    totalLongs := totalLongs + last_open_longCondition
+    totalShorts := 0.0
+    totalShorts
+
+if shortCondition
+    totalLongs := 0.0
+    totalShorts := totalShorts + last_open_shortCondition
+    totalShorts
+
+averageLongs := totalLongs / sectionLongConditions
+averageShorts := totalShorts / sectionShortConditions
+
+/////////////////////////////////
+//======[ Trailing Stop ]======//
+/////////////////////////////////
+
+trailingStopDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+isTS = input(false, "Trailing Stop")
+tsi = input(1, "Activate Trailing Stop Price (%)", type=input.float, step=0.10)
+ts = input(1, "Trailing Stop (%)", type=input.float, step=0.10)
+
+last_high = float(na)
+last_low = float(na)
+last_high_short = float(na)
+last_low_short = float(na)
+last_high := not in_longCondition ? na : 
+   in_longCondition and (na(last_high[1]) or high > nz(last_high[1])) ? high : 
+   nz(last_high[1])
+last_high_short := not in_shortCondition ? na : 
+   in_shortCondition and (na(last_high[1]) or high > nz(last_high[1])) ? high : 
+   nz(last_high[1])
+last_low := not in_shortCondition ? na : 
+   in_shortCondition and (na(last_low[1]) or low < nz(last_low[1])) ? low : 
+   nz(last_low[1])
+last_low_short := not in_longCondition ? na : 
+   in_longCondition and (na(last_low[1]) or low < nz(last_low[1])) ? low : 
+   nz(last_low[1])
+
+long_ts = isTS and not na(last_high) and low <= last_high - last_high / 100 * ts and 
+   longCondition == 0 and last_high >= averageLongs + averageLongs / 100 * tsi
+short_ts = isTS and not na(last_low) and high >= last_low + last_low / 100 * ts and 
+   shortCondition == 0 and last_low <= averageShorts - averageShorts / 100 * tsi
+
+///////////////////////////////
+//======[ Take Profit ]======//
+///////////////////////////////
+
+takeProfitDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+isTP = input(false, "Take Profit")
+tp = input(1.25, "Take Profit (%)", type=input.float, step=0.10)
+long_tp = isTP and close > averageLongs + averageLongs / 100 * tp and not longCondition
+short_tp = isTP and close < averageShorts - averageShorts / 100 * tp and not shortCondition
+
+/////////////////////////////
+//======[ Stop Loss ]======//
+/////////////////////////////
+
+stopLossDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+isSL = input(false, "Stop Loss")
+sl = input(1.4, "Stop Loss (%)", type=input.float, step=0.10)
+long_sl = isSL and close < averageLongs - averageLongs / 100 * sl and longCondition == 0
+short_sl = isSL and close > averageShorts + averageShorts / 100 * sl and 
+   shortCondition == 0
+
+//////////////////////////////////////
+//======[ Conditional Closes ]======//
+/////////////////////////////////////
+conditionalClosesDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+isCLl = input(false, "Close Condition Long")
+isCLs = input(false, "Close Condition Short")
+long_cl = isCLl and longCondClose and in_longCondition == 1
+short_cl = isCLs and shortCondClose and in_shortCondition == 1
+
+
+/////////////////////////////////
+//======[ Close Signals ]======//
+/////////////////////////////////
+
+longClose = long_tp or long_sl or long_ts or long_cl ? 1 : 0
+shortClose = short_tp or short_sl or short_ts or short_cl ? 1 : 0
+
+///////////////////////////////
+//======[ Plot Colors ]======//
+///////////////////////////////
+
+longCloseCol = color(na)
+shortCloseCol = color(na)
+longCloseCol := long_tp ? color.purple : 
+   long_sl ? color.maroon : long_ts ? color.blue : longCloseCol[1]
+shortCloseCol := short_tp ? color.purple : 
+   short_sl ? color.maroon : short_ts ? color.blue : shortCloseCol[1]
+tpColor = isTP and in_longCondition ? color.purple : 
+   isTP and in_shortCondition ? color.purple : color.white
+slColor = isSL and in_longCondition ? color.red : 
+   isSL and in_shortCondition ? color.red : color.white
+
+//////////////////////////////////
+//======[ Strategy Plots ]======//
+//////////////////////////////////
+
+plot(isTS and in_longCondition ? averageLongs + averageLongs / 100 * tsi : na, "Long Trailing Activate", color.blue, style=3, linewidth=2)
+plot(isTS and in_longCondition and last_high >= averageLongs + averageLongs / 100 * tsi ? last_high - last_high / 100 * ts : na, "Long Trailing", color.fuchsia, style=2, linewidth=3)
+plot(isTS and in_shortCondition ? averageShorts - averageShorts / 100 * tsi : na, "Short Trailing Activate", color.blue, style=3, linewidth=2)
+plot(isTS and in_shortCondition and last_low <= averageShorts - averageShorts / 100 * tsi ? last_low + last_low / 100 * ts : na, "Short Trailing", color.fuchsia, style=2, linewidth=3)
+plot(isTP and in_longCondition and last_high < averageLongs + averageLongs / 100 * tp ? averageLongs + averageLongs / 100 * tp : na, "Long TP", tpColor, style=3, linewidth=2)
+plot(isTP and in_shortCondition and last_low > averageShorts - averageShorts / 100 * tp ? averageShorts - averageShorts / 100 * tp : na, "Short TP", tpColor, style=3, linewidth=2)
+plot(isSL and in_longCondition and last_low_short > averageLongs - averageLongs / 100 * sl ? averageLongs - averageLongs / 100 * sl : na, "Long SL", slColor, style=3, linewidth=2)
+plot(isSL and in_shortCondition and last_high_short < averageShorts + averageShorts / 100 * sl ? averageShorts + averageShorts / 100 * sl : na, "Short SL", slColor, style=3, linewidth=2)
+
+///////////////////////////////
+//======[ Alert Plots ]======//
+///////////////////////////////
+
+// plot(longCondition, "Long", green)
+// plot(shortCondition, "Short", red)
+// plot(longClose, "Long Close", longCloseCol)
+// plot(shortClose, "Short Close", shortCloseCol)
+
+///////////////////////////////////
+//======[ Reset Variables ]======//
+///////////////////////////////////
+
+if longClose or not in_longCondition
+    averageLongs := 0
+    totalLongs := 0.0
+    sectionLongs := 0
+    sectionLongConditions := 0
+    sectionLongConditions
+
+if shortClose or not in_shortCondition
+    averageShorts := 0
+    totalShorts := 0.0
+    sectionShorts := 0
+    sectionShortConditions := 0
+    sectionShortConditions
+
+////////////////////////////////////////////
+//======[ Strategy Entry and Exits ]======//
+////////////////////////////////////////////
+
+if testPeriod()
+    strategy.entry("Long", 1, when=longCondition)
+    strategy.entry("Short", 0, when=shortCondition)
+    strategy.close("Long", when=longClose)
+    strategy.close("Short", when=shortClose)
+
