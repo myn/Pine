@@ -26,7 +26,7 @@ shortCondClose = false
 //* https://www.tradingview.com/script/eCC1cvxQ-Backtesting-Period-Selector-Component *//
 //* https://www.tradingview.com/u/pbergden/ *//
 //* Modifications made *//
-timePeriodDivider = input(false,"░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+timePeriodDivider = input(false,"░░░░░░░░░░░░░░░░░░░░░░░░░")
 testStartYear = input(2019, "Backtest Start Year") 
 testStartMonth = input(1, "Backtest Start Month")
 testStartDay = input(1, "Backtest Start Day")
@@ -44,7 +44,7 @@ testPeriod() =>
 //////////////////////////
 //* Strategy Component *//
 //////////////////////////
-longShortFlipDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+longShortFlipDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░")
 isLong = input(false, "Longs Only")
 isShort = input(false, "Shorts Only")
 isFlip = input(false, "Flip the Opens")
@@ -93,7 +93,7 @@ if short
 //////////////////////////////
 //======[ Pyramiding ]======//
 //////////////////////////////
-pyramidingDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+pyramidingDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░")
 pyrl = input(1, "Pyramiding less than")  // If your count is less than this number
 pyre = input(0, "Pyramiding equal to")  // If your count is equal to this number
 pyrg = input(1000000, "Pyramiding greater than")  // If your count is greater than this number
@@ -173,7 +173,7 @@ averageShorts := totalShorts / sectionShortConditions
 //======[ Trailing Stop ]======//
 /////////////////////////////////
 
-trailingStopDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+trailingStopDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░")
 isTS = input(false, "Trailing Stop")
 tsi = input(1, "Activate Trailing Stop Price (%)", type=input.float, step=0.10)
 ts = input(1, "Trailing Stop (%)", type=input.float, step=0.10)
@@ -204,7 +204,7 @@ short_ts = isTS and not na(last_low) and high >= last_low + last_low / 100 * ts 
 //======[ Take Profit ]======//
 ///////////////////////////////
 
-takeProfitDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+takeProfitDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░")
 isTP = input(false, "Take Profit")
 tp = input(1.25, "Take Profit (%)", type=input.float, step=0.10)
 long_tp = isTP and close > averageLongs + averageLongs / 100 * tp and not longCondition
@@ -214,7 +214,7 @@ short_tp = isTP and close < averageShorts - averageShorts / 100 * tp and not sho
 //======[ Stop Loss ]======//
 /////////////////////////////
 
-stopLossDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+stopLossDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░")
 isSL = input(false, "Stop Loss")
 sl = input(1.4, "Stop Loss (%)", type=input.float, step=0.10)
 long_sl = isSL and close < averageLongs - averageLongs / 100 * sl and longCondition == 0
@@ -224,7 +224,7 @@ short_sl = isSL and close > averageShorts + averageShorts / 100 * sl and
 //////////////////////////////////////
 //======[ Conditional Closes ]======//
 /////////////////////////////////////
-conditionalClosesDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░")
+conditionalClosesDivider = input(false, "░░░░░░░░░░░░░░░░░░░░░░░░░")
 isCLl = input(false, "Close Condition Long")
 isCLs = input(false, "Close Condition Short")
 long_cl = isCLl and longCondClose and in_longCondition == 1
