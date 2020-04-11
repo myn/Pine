@@ -22,7 +22,7 @@ laggingSpan_src = input(close, title="Lagging Span price source - Chikou-Span")
 donchian(len) => avg(lowest(len), highest(len))
 displ = displacement-extra_bars
 // ------------------------------------------------------------------------------
-// OFFSET:
+// OFFSET: 
 conversion = donchian(conversion_prd)   // Conversion Line - Tenkan-Sen (9 Period)
 baseline  = donchian(baseline_prd)      // Base Line - Kijun-Sen (26 Period)
 baselineA = donchian(baselineA_prd)     // Base Line Period - Kijun-Sen (auxiliary)
